@@ -135,6 +135,6 @@ contract V2PairHookTest is Test {
         _path[0] = address(0);
         _path[1] = Currency.unwrap(currency1);
         swapRouter.swapExactETHForTokens{value: 100}(0, _path, address(this), type(uint256).max);
-        console2.log(vm.lastCallGas().gasTotalUsed);
     }
+
 }
