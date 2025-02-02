@@ -9,6 +9,7 @@ import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 // Local
 import {IUniswapV2PairHookFactory} from "./interfaces/IUniswapV2PairHookFactory.sol";
 import {V2PairHook} from "./V2PairHook.sol";
+import {console2} from "forge-std/console2.sol";
 
 contract UniswapV2PairHookFactory is IUniswapV2PairHookFactory {
     error InvalidPermissions();
@@ -18,8 +19,8 @@ contract UniswapV2PairHookFactory is IUniswapV2PairHookFactory {
 
     // Mask to extract the first 14 bits of the address
     uint160 constant FLAG_MASK = uint160(address(0xFffC000000000000000000000000000000000000));
-    // A pair needs 10100011001100 - beforeInit, beforeAdd, beforeSwap, afterSwap, beforeSwapDelta, and afterSwapDelta
-    uint160 constant PAIR_FLAGS = uint160(address(0xA330000000000000000000000000000000000000));
+    // A pair needs 10100011001100 - beforeInit, beforeAdd, beforeRemove, beforeSwap, afterSwap, beforeSwapDelta, and afterSwapDelta
+    uint160 constant PAIR_FLAGS = uint160(address(0xaB30000000000000000000000000000000000000));
 
     bytes32 constant TOKEN_0_SLOT = 0x3cad5d3ec16e143a33da68c00099116ef328a882b65607bec5b2431267934a20;
     bytes32 constant TOKEN_1_SLOT = 0x5b610e8e1835afecdd154863369b91f55612defc17933f83f4425533c435a248;
@@ -61,6 +62,25 @@ contract UniswapV2PairHookFactory is IUniswapV2PairHookFactory {
         }
     }
 
+    function findValidSalt(bytes32 salt, bytes32 initCodeHash) public view returns (bytes32) {
+        uint256 saltNonce = 0;
+        address computedAddress;
+        while (true) {
+            bytes32 newSalt = keccak256(abi.encodePacked(salt, saltNonce));
+            computedAddress = address(uint160(uint256(keccak256(abi.encodePacked(
+                bytes1(0xff),
+                address(this),
+                newSalt,
+                initCodeHash
+            )))));
+            
+            if (_validPermissions(computedAddress)) {
+                return newSalt;
+            }
+            saltNonce++;
+        }
+    }
+
     function createHook(bytes32 salt, address tokenA, address tokenB) external returns (IHooks hook) {
         // Validate tokenA and tokenB are not the same address
         if (tokenA == tokenB) revert IdenticalAddresses();
@@ -76,7 +96,13 @@ contract UniswapV2PairHookFactory is IUniswapV2PairHookFactory {
         // write to transient storage: token0, token1
         _setParameters(token0, token1);
 
-        // deploy hook (expect callback to parameters)
+        // Calculate the init code hash of the V2PairHook contract
+        bytes32 initCodeHash = keccak256(abi.encodePacked(type(V2PairHook).creationCode));
+        
+        // Find the correct salt that will result in an address with the required permission flags
+        salt = findValidSalt(salt, initCodeHash);
+
+        // deploy hook with the correct salt
         hook = new V2PairHook{salt: salt}();
         address hookAddress = address(hook);
 
@@ -95,7 +121,7 @@ contract UniswapV2PairHookFactory is IUniswapV2PairHookFactory {
             hooks: hook
         });
 
-        poolManager.initialize(key, 1, "");
+        poolManager.initialize(key, uint160(1 << 96), "");
 
         emit HookCreated(token0, token1, hookAddress);
     }

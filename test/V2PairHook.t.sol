@@ -61,7 +61,7 @@ contract V2PairHookTest is Test {
         deployMintAndApprove2Currencies();
 
         // The constructor will call back and fetch the manager and currencies
-        address hookAddr = address(uint160((1 << 159) + (1 << 157) + (1 << 153) + (1 << 152) + (1 << 149) + (1 << 148)));
+        address hookAddr = address(uint160((1 << 159) + (1 << 157) + (1 << 155) + (1 << 153) + (1 << 152) + (1 << 149) + (1 << 148)));
         V2PairHook impl = new V2PairHook();
         vm.etch(hookAddr, address(impl).code);
         hook = V2PairHook(hookAddr);
@@ -135,6 +135,15 @@ contract V2PairHookTest is Test {
         _path[0] = address(0);
         _path[1] = Currency.unwrap(currency1);
         swapRouter.swapExactETHForTokens{value: 100}(0, _path, address(this), type(uint256).max);
+    }
+
+    function test_burn_liquidity() public {
+        manager.initialize(key, SQRT_RATIO_1_1, "");
+
+        uint256 liquidity = liquidityRouter.addLiquidity(hook,100* 1e18, 100* 1e18);
+        console2.log("liquidity", liquidity);
+        hook.approve(address(liquidityRouter), liquidity);
+        liquidityRouter.burnLiquidity(hook, liquidity);
     }
 
 }

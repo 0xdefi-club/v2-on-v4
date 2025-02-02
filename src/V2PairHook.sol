@@ -17,6 +17,7 @@ import {Math} from "./libraries/Math.sol";
 import {UnsafeMath} from "./libraries/UnsafeMath.sol";
 import {IUniswapV2PairHookFactory} from "./interfaces/IUniswapV2PairHookFactory.sol";
 import {BaseHook} from "./BaseHook.sol";
+import {console2} from "forge-std/console2.sol";
 
 contract V2PairHook is BaseHook, ERC20 {
     using UnsafeMath for uint256;
@@ -28,6 +29,7 @@ contract V2PairHook is BaseHook, ERC20 {
     error InsufficientLiquidityMinted();
     error InsufficientLiquidityBurnt();
     error AddLiquidityDirectToHook();
+    error RemoveLiquidityDirectToHook();
     error IncorrectSwapAmount();
 
     event Mint(address indexed sender, uint256 amount0, uint256 amount1);
@@ -94,7 +96,6 @@ contract V2PairHook is BaseHook, ERC20 {
         uint256 balance0 = poolManager.balanceOf(address(this), CurrencyLibrary.toId(currency0));
         uint256 balance1 = poolManager.balanceOf(address(this), CurrencyLibrary.toId(currency1));
         uint256 liquidity = balanceOf[address(this)];
-
         amount0 = (liquidity * balance0).unsafeDiv(totalSupply); // using balances ensures pro-rata distribution
         amount1 = (liquidity * balance1).unsafeDiv(totalSupply); // using balances ensures pro-rata distribution
         if (amount0 == 0 || amount1 == 0) revert InsufficientLiquidityBurnt();
@@ -146,6 +147,15 @@ contract V2PairHook is BaseHook, ERC20 {
         returns (bytes4)
     {
         revert AddLiquidityDirectToHook();
+    }
+
+    function beforeRemoveLiquidity(address, PoolKey calldata, IPoolManager.ModifyLiquidityParams calldata, bytes calldata)
+        external
+        pure
+        override
+        returns (bytes4)
+    {
+        revert RemoveLiquidityDirectToHook();
     }
 
     function beforeSwap(address, PoolKey calldata key, IPoolManager.SwapParams calldata params, bytes calldata)
@@ -212,7 +222,7 @@ contract V2PairHook is BaseHook, ERC20 {
             afterInitialize: false,
             beforeAddLiquidity: true,
             afterAddLiquidity: false,
-            beforeRemoveLiquidity: false,
+            beforeRemoveLiquidity: true,
             afterRemoveLiquidity: false,
             beforeSwap: true,
             afterSwap: true,

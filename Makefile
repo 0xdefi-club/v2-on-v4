@@ -18,7 +18,7 @@ pkg:
 	@./pkg.sh
 
 deploy:
-	@time forge script script/deploy.s.sol:DeployScript $(NETWORK_PARAMS) --slow -vvvv
+	@time forge script script/Deploy.s.sol:DeployScript $(NETWORK_PARAMS) --slow -vvvv
 
 deploy-verify:
-	@forge script script/deploy.s.sol:DeployScript $(NETWORK_PARAMS) --slow --verify -vvvv
+	@forge script script/Deploy.s.sol:DeployScript $(NETWORK_PARAMS) --slow --verify -vvvv

@@ -27,6 +27,11 @@ contract AddLiquidityRouter is IUnlockCallback {
         return hook.mint(msg.sender);
     }
 
+    function burnLiquidity(V2PairHook hook, uint256 liquidity) external {
+        hook.transferFrom(msg.sender, address(hook), liquidity);
+        hook.burn(msg.sender);
+    }
+
     function unlockCallback(bytes calldata rawData) external returns (bytes memory) {
         require(msg.sender == address(manager));
 
